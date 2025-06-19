@@ -5,7 +5,6 @@ import { SearchInput } from "../component/SearchInput";
 import { BASE_URL } from "../constant/backend";
 import "./SearchBar.css";
 
-// Types and Interfaces
 interface Citation {
   id: string;
   context: string;
@@ -27,7 +26,6 @@ export interface Message {
 }
 
 const SearchBar = () => {
-  // State Management
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [conversation, setConversation] = useState<Message[]>([
@@ -44,7 +42,6 @@ const SearchBar = () => {
   const contextResultsStream = useRef<SearchResult[]>([]);
   const conversationEndRef = useRef<HTMLDivElement>(null);
 
-  // Effects
   useEffect(() => {
     if (conversationEndRef.current) {
       conversationEndRef.current.scrollIntoView({ behavior: "smooth" });
@@ -61,7 +58,6 @@ const SearchBar = () => {
     }
   }, [conversation]);
 
-  // Event Handlers
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
   };
@@ -76,7 +72,6 @@ const SearchBar = () => {
     ]);
     setIsLoading(true);
     try {
-      // Make API request
       await fetchEventSource(
         BASE_URL +
           "/ask-llm?query=" +
@@ -84,9 +79,9 @@ const SearchBar = () => {
           "&convoHistory=" +
           encodeURIComponent(""),
         {
-          method: "GET", // Using GET method for RESTful endpoint
+          method: "GET",
           headers: {
-            Accept: "text/event-stream", // Telling the server we expect a stream
+            Accept: "text/event-stream",
           },
           onopen: async (res) => {
             if (res.ok && res.status === 200) {
@@ -111,7 +106,7 @@ const SearchBar = () => {
                   if (exist === -1) {
                     contextResultsStream.current.push({
                       title: result.title,
-                      link: result.link.replace("/waiting_room", ""), // Remove /waiting_room
+                      link: result.link.replace("/waiting_room", ""),
                       type: result.type || 'unknown',
                       timestamp_seconds: result.timestamp_seconds,
                       summary: result.summary,
@@ -123,7 +118,7 @@ const SearchBar = () => {
               contextOrderStream.current.add(parsedData.order);
             }
             if (parsedData.reformulated) {
-              // Append reformulated question to reformulatedDiv
+              
             }
             if (parsedData.message) {
               window.history.scrollRestoration = "auto";
@@ -148,14 +143,14 @@ const SearchBar = () => {
               const last = prev[prev.length - 1];
               last.results = contextResultsStream.current.map((result) => ({
                 title: result.title,
-                link: result.link.replace("/waiting_room", ""), // Remove /waiting_room
+                link: result.link.replace("/waiting_room", ""),
                 type: result.type,
                 timestamp_seconds: result.timestamp_seconds,
                 summary: result.summary,
                 content: result.content
               }));
               last.content = last.content.replace("Searching...", "");
-              return [...prev]; // You can resolve the new state if needed
+              return [...prev];
             });
           },
 
@@ -186,7 +181,6 @@ const SearchBar = () => {
     await performSearch(toSearch);
   };
 
-  // Main Render
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
       <div

@@ -11,6 +11,11 @@ from youtube_transcript_api import YouTubeTranscriptApi
 from urllib.parse import parse_qs, urlparse
 import time
 import random
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 load_env()
 
@@ -71,7 +76,7 @@ def clean_text(text):
         cleaned_text = llm.invoke(prompt).content.strip()
         return cleaned_text
     except Exception as e:
-        print(f"Error cleaning text: {str(e)}")
+        logger.error(f"Error cleaning text: {str(e)}")
         return text  # Return original text as fallback
 
 def extract_video_id(url):
@@ -132,7 +137,7 @@ def get_transcript_direct(url, max_retries=3):
             # Add small delay between attempts to avoid rate limiting
             if attempt > 0:
                 delay = random.uniform(1, 3) * attempt
-                print(f"Retrying transcript fetch after {delay:.1f}s delay (attempt {attempt + 1}/{max_retries})")
+                logger.info(f"Retrying transcript fetch after {delay:.1f}s delay (attempt {attempt + 1}/{max_retries})")
                 time.sleep(delay)
             
             # Get available transcripts
@@ -185,7 +190,7 @@ def get_transcript_direct(url, max_retries=3):
             elif "private" in error_msg:
                 return None, "Video is private"
             elif "no element found" in error_msg and attempt < max_retries - 1:
-                print(f"XML parsing error (attempt {attempt + 1}/{max_retries}): {str(e)}")
+                logger.warning(f"XML parsing error (attempt {attempt + 1}/{max_retries}): {str(e)}")
                 continue  # Retry for XML parsing errors
             elif attempt == max_retries - 1:
                 return None, f"Transcript error after {max_retries} attempts: {str(e)}"
@@ -289,7 +294,7 @@ def get_youtube_metadata(url):
             }
             return metadata
     except Exception as e:
-        print(f"Error fetching metadata for {url}: {str(e)}")
+        logger.error(f"Error fetching metadata for {url}: {str(e)}")
         return {'title': 'Title not found'}
 
 def get_youtube_title(url):
@@ -350,27 +355,34 @@ def youtubeLoader(url, title_to_chunks, url_to_title):
     if url in url_to_title:
         title = url_to_title[url]
         if title in title_to_chunks:
+            logger.info(f"Video already processed, skipping: {url}")
             return set()
     
+    logger.info(f"Starting processing for YouTube URL: {url}")
+    
     # Step 1: Check video availability
+    logger.info(f"Checking video availability for: {url}")
     is_available, availability_msg = check_video_availability(url)
     if not is_available:
-        print(f"Skipping YouTube video {url}: {availability_msg}")
+        logger.warning(f"Skipping YouTube video {url}: {availability_msg}")
         return set()
     
     # Step 2: Get video metadata
+    logger.info(f"Fetching video metadata for: {url}")
     video_metadata = get_youtube_metadata(url)
     title = video_metadata.get('title', 'Title not found')
     if title == "Title not found":
-        print(f"Warning: Could not fetch title for {url}, using URL as title")
+        logger.warning(f"Could not fetch title for {url}, using URL as title")
         title = url
+    else:
+        logger.info(f"Video title: {title}")
     
     # Step 3: Try multiple methods to get transcript
     loaded_clips = []
     
     # Method 1: Try LangChain YoutubeLoader
     try:
-        print(f"Attempting LangChain loader for {url}")
+        logger.info(f"Attempting LangChain loader for: {title}")
         loader = YoutubeLoader.from_youtube_url(
             url,
             add_video_info=False,
@@ -378,52 +390,56 @@ def youtubeLoader(url, title_to_chunks, url_to_title):
             chunk_size_seconds=60,
         )
         loaded_clips = loader.load()
-        print(f"Successfully loaded {len(loaded_clips)} clips using LangChain loader")
+        logger.info(f"Successfully loaded {len(loaded_clips)} clips using LangChain loader for: {title}")
         
     except Exception as e:
-        print(f"LangChain loader failed for {url}: {str(e)}")
+        logger.warning(f"LangChain loader failed for {title}: {str(e)}")
         
         # Method 2: Try direct YouTube Transcript API
         try:
-            print(f"Attempting direct transcript API for {url}")
+            logger.info(f"Attempting direct transcript API for: {title}")
             transcript_data, transcript_msg = get_transcript_direct(url)
             if transcript_data:
                 loaded_clips = create_document_from_transcript(transcript_data, title, url)
-                print(f"Successfully loaded {len(loaded_clips)} clips using direct API ({transcript_msg})")
+                logger.info(f"Successfully loaded {len(loaded_clips)} clips using direct API ({transcript_msg}) for: {title}")
             else:
-                print(f"Direct transcript API failed: {transcript_msg}")
+                logger.warning(f"Direct transcript API failed for {title}: {transcript_msg}")
                 
                 # Method 3: Try yt-dlp as final fallback
                 try:
-                    print(f"Attempting yt-dlp fallback for {url}")
+                    logger.info(f"Attempting yt-dlp fallback for: {title}")
                     transcript_data, transcript_msg = get_transcript_ytdlp(url)
                     if transcript_data:
                         loaded_clips = create_document_from_transcript(transcript_data, title, url)
-                        print(f"Successfully loaded {len(loaded_clips)} clips using yt-dlp ({transcript_msg})")
+                        logger.info(f"Successfully loaded {len(loaded_clips)} clips using yt-dlp ({transcript_msg}) for: {title}")
                     else:
-                        print(f"yt-dlp fallback failed: {transcript_msg}")
+                        logger.warning(f"yt-dlp fallback failed for {title}: {transcript_msg}")
                 except Exception as e3:
-                    print(f"yt-dlp fallback error for {url}: {str(e3)}")
+                    logger.error(f"yt-dlp fallback error for {title}: {str(e3)}")
                     
         except Exception as e2:
-            print(f"Direct transcript API error for {url}: {str(e2)}")
+            logger.error(f"Direct transcript API error for {title}: {str(e2)}")
             
             # Method 3: Try yt-dlp as final fallback
             try:
-                print(f"Attempting yt-dlp fallback for {url}")
+                logger.info(f"Attempting yt-dlp fallback for: {title}")
                 transcript_data, transcript_msg = get_transcript_ytdlp(url)
                 if transcript_data:
                     loaded_clips = create_document_from_transcript(transcript_data, title, url)
-                    print(f"Successfully loaded {len(loaded_clips)} clips using yt-dlp ({transcript_msg})")
+                    logger.info(f"Successfully loaded {len(loaded_clips)} clips using yt-dlp ({transcript_msg}) for: {title}")
                 else:
-                    print(f"yt-dlp fallback failed: {transcript_msg}")
+                    logger.warning(f"yt-dlp fallback failed for {title}: {transcript_msg}")
             except Exception as e3:
-                print(f"yt-dlp fallback error for {url}: {str(e3)}")
+                logger.error(f"yt-dlp fallback error for {title}: {str(e3)}")
     
     # Step 4: Process loaded clips if we have any
     if loaded_clips:
+        logger.info(f"Processing {len(loaded_clips)} clips for: {title}")
+        
         # Clean and enrich metadata for each clip
-        for clip in loaded_clips:
+        for i, clip in enumerate(loaded_clips, 1):
+            logger.debug(f"Processing clip {i}/{len(loaded_clips)} for: {title}")
+            
             clip.metadata.update({
                 "title": title,
                 "type": "youtube",
@@ -443,21 +459,22 @@ def youtubeLoader(url, title_to_chunks, url_to_title):
             
             # Clean the text using LLM
             try:
+                logger.debug(f"Cleaning text for clip {i}/{len(loaded_clips)} of: {title}")
                 cleaned_text = clean_text(clip.page_content)
-                print(f'Original text: {clip.page_content[:100]}...')
-                print(f'Cleaned text: {cleaned_text[:100]}...')
+                logger.debug(f'Original text: {clip.page_content[:100]}...')
+                logger.debug(f'Cleaned text: {cleaned_text[:100]}...')
                 clip.page_content = cleaned_text
             except Exception as e:
-                print(f"Error cleaning text for {url}: {str(e)}, using original text")
+                logger.error(f"Error cleaning text for {title}: {str(e)}, using original text")
         
         title_to_chunks[title] = loaded_clips
         url_to_title[url] = title
-        print(f"Successfully processed YouTube video: {title}")
+        logger.info(f"Successfully processed YouTube video with transcript: {title}")
         return {title}
     
     else:
         # No transcript available - create a basic document with video metadata
-        print(f"No transcript available for {url}, creating metadata-only document")
+        logger.info(f"No transcript available for {title}, creating metadata-only document")
         
         # Create enhanced content using available metadata
         content_parts = [f"YouTube video: {title}", f"URL: {url}"]
@@ -506,5 +523,5 @@ def youtubeLoader(url, title_to_chunks, url_to_title):
         
         title_to_chunks[title] = [basic_doc]
         url_to_title[url] = title
-        print(f"Created metadata-only document for: {title}")
+        logger.info(f"Created metadata-only document for: {title}")
         return {title}

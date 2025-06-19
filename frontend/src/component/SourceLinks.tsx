@@ -15,9 +15,7 @@ export const SourceLinks: React.FC<SourceLinksProps> = ({ results }) => {
     return null;
   }
 
-  // Helper function to get the appropriate tag info based on type
   const getTagInfo = (type: string, link: string) => {
-    // First check the backend-provided type field
     if (type === 'youtube') {
       return {
         label: 'YouTube',
@@ -25,7 +23,6 @@ export const SourceLinks: React.FC<SourceLinksProps> = ({ results }) => {
       };
     }
     
-    // Fall back to URL-based detection
     if (link && link.toLowerCase().includes('youtube')) {
       return {
         label: 'YouTube',
@@ -37,7 +34,6 @@ export const SourceLinks: React.FC<SourceLinksProps> = ({ results }) => {
         className: 'px-1.5 py-0.5 text-xs rounded-full bg-blue-500 text-white'
       };
     } else {
-      // Default for any other type (pdf, etc.)
       return {
         label: 'NEFAC Website',
         className: 'px-1.5 py-0.5 text-xs rounded-full bg-blue-500 text-white'
@@ -91,7 +87,6 @@ export const SourceLinks: React.FC<SourceLinksProps> = ({ results }) => {
                   </div>
                 </a>
                 
-                {/* Simplified single tag */}
                 <div className="mt-1">
                   <span className={tagInfo.className}>
                     {tagInfo.label}
@@ -103,7 +98,6 @@ export const SourceLinks: React.FC<SourceLinksProps> = ({ results }) => {
         })}
       </div>
       
-      {/* Optional: Show link to view all details */}
       {results.length > 3 && (
         <div className="mt-2 pt-2 border-t border-blue-200">
           <button className="text-blue-600 hover:text-blue-800 text-xs font-medium">

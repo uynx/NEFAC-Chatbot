@@ -6,13 +6,11 @@ interface SearchResult {
   type: string;
   timestamp_seconds?: number;
   summary?: string;
-  content?: string; // The actual chunk content from transcript
+  content?: string;
 }
 
 export const SearchResultItem: React.FC<{ result: SearchResult}> = ({ result }) => {
-  // Helper function to get the appropriate tag info based on type
   const getTagInfo = (type: string, link: string) => {
-    // First check the backend-provided type field
     if (type === 'youtube') {
       return {
         label: 'YouTube',
@@ -20,7 +18,6 @@ export const SearchResultItem: React.FC<{ result: SearchResult}> = ({ result }) 
       };
     }
     
-    // Fall back to URL-based detection
     if (link && link.toLowerCase().includes('youtube')) {
       return {
         label: 'YouTube',
@@ -32,7 +29,6 @@ export const SearchResultItem: React.FC<{ result: SearchResult}> = ({ result }) 
         className: 'px-2 py-1 text-xs font-medium rounded-full bg-blue-500 text-white'
       };
     } else {
-      // Default for any other type (pdf, etc.)
       return {
         label: 'NEFAC Website',
         className: 'px-2 py-1 text-xs font-medium rounded-full bg-blue-500 text-white'
@@ -44,7 +40,6 @@ export const SearchResultItem: React.FC<{ result: SearchResult}> = ({ result }) 
 
   return (
     <div className="p-4 border-l-4 border-blue-200 bg-gray-50 rounded-r-lg">
-      {/* Source info header */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1">
           <h3 className="text-base font-semibold text-gray-900 mb-1">{result.title}</h3>
@@ -63,13 +58,11 @@ export const SearchResultItem: React.FC<{ result: SearchResult}> = ({ result }) 
           </a>
         </div>
         
-        {/* Tag */}
         <span className={tagInfo.className}>
           {tagInfo.label}
         </span>
       </div>
       
-      {/* Transcript content */}
       {result.content && (
         <div className="mt-3">
           <h4 className="text-sm font-medium text-gray-700 mb-2">Relevant Content:</h4>
@@ -81,7 +74,6 @@ export const SearchResultItem: React.FC<{ result: SearchResult}> = ({ result }) 
         </div>
       )}
       
-      {/* Summary if available and different from content */}
       {result.summary && result.summary !== result.content && (
         <div className="mt-3">
           <h4 className="text-sm font-medium text-gray-700 mb-2">Summary:</h4>

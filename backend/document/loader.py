@@ -4,6 +4,11 @@ import shutil
 from document.pdf_loader import pdfLoader
 from document.youtube_loader import youtubeLoader
 import pickle
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Define folder paths as placeholders
 WAITING_ROOM_PATH = "docs/waiting_room"
@@ -46,24 +51,37 @@ def load_all_documents():
         with open(yt_urls_file, "r") as waiting_read:
             urls = [line.strip() for line in waiting_read if line.strip()]
 
+    # Log total number of YouTube videos to process
+    total_videos = len(urls)
+    if total_videos > 0:
+        logger.info(f"Starting to process {total_videos} YouTube videos")
+
     # Process URLs and collect failed ones
     failed_urls = []
-    for url in urls:
+    for idx, url in enumerate(urls, 1):
         # Skip empty lines or lines that don't look like URLs
         if not url or not url.startswith('http'):
-            print(f"Skipping invalid URL: {url}")
+            logger.warning(f"Skipping invalid URL: {url}")
             continue
             
+        logger.info(f"Processing YouTube video {idx}/{total_videos}: {url}")
+        
         with open(finished_urls_file, "a") as finished:
             try:
                 new_vid = youtubeLoader(url, title_to_chunks, url_to_title)
                 all_documents.update(new_vid)
                 new_docs.update(new_vid)
                 finished.write(url + "\n")
+                logger.info(f"Successfully processed video {idx}/{total_videos}")
             except Exception as e:
-                print(f"Error processing YouTube URL {url}: {e}")
+                logger.error(f"Error processing YouTube URL {url} (video {idx}/{total_videos}): {e}")
                 failed_urls.append(url)
                 continue
+
+    # Log completion status
+    if total_videos > 0:
+        successful_videos = total_videos - len(failed_urls)
+        logger.info(f"YouTube video processing complete: {successful_videos}/{total_videos} successful, {len(failed_urls)} failed")
 
     # Rewrite failed URLs to waiting_room/yt_urls.txt
     with open(yt_urls_file, "w") as waiting_write:
