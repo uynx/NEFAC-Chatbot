@@ -1,4 +1,4 @@
-from llm.chain import middleware_qa
+from llm.chain import middleware_qa, query_nefac_database_new
 import json
 import logging
 from vector.load import vector_store
@@ -7,9 +7,13 @@ import numpy as np
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-async def ask_llm_stream(_, query, convoHistory="", roleFilter="", contentType="", resourceType=""):
+async def ask_llm_stream(_, query, convoHistory=""):
+    """
+    Stream responses from the new clean LLM implementation.
+    Now uses the improved 5-query vector search approach.
+    """
     logger.info(f"Query: {query}")
-    async for chunk in middleware_qa(query, convoHistory, roleFilter, contentType, resourceType):
+    async for chunk in middleware_qa(query, convoHistory):
         yield chunk
 
 def inspect_vector_store(vector_store, prompt='', k=5):

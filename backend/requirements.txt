@@ -57,13 +57,13 @@ jsonpointer==3.0.0
 jsonschema==4.23.0
 jsonschema-specifications==2024.10.1
 kiwisolver==1.4.7
-langchain==0.3.4
-langchain-community==0.3.3
-langchain-core==0.3.13
-langchain-openai==0.2.3
-langchain-text-splitters==0.3.0
+langchain==0.3.25
+langchain-community==0.3.25
+langchain-core==0.3.65
+langchain-openai==0.3.24
+langchain-text-splitters==0.3.8
 langdetect==1.0.9
-langsmith==0.1.137
+langsmith==0.3.45
 layoutparser==0.3.4
 lxml==5.3.0
 MarkupSafe==3.0.2
@@ -80,7 +80,7 @@ olefile==0.47
 omegaconf==2.3.0
 onnx==1.17.0
 onnxruntime
-openai==1.52.2
+openai==1.88.0
 openapi==2.0.0
 opencv-python==4.10.0.84
 orjson==3.10.10
@@ -152,5 +152,5 @@ uvicorn==0.32.0
 webencodings==0.5.1
 wrapt==1.16.0
 yarl==1.16.0
-youtube-transcript-api==0.6.3
-yt-dlp==2025.3.21
+youtube-transcript-api==1.1.0
+yt-dlp==2025.6.9

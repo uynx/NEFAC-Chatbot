@@ -134,3 +134,5 @@ dist/
 
 # we may need to eventually remove the documents, database, and pkls from the git
 faiss_store/
+
+.cursor

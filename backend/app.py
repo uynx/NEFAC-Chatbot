@@ -64,15 +64,12 @@ app.add_middleware(
 async def ask_llm(
     query: str,
     convoHistory: str = "",
-    roleFilter: str = "",
-    contentType: str = "",
-    resourceType: str = "",
 ):
     
     try:        
         # Return the stream as a response using StreamingResponse
         return StreamingResponse(
-            ask_llm_stream(None, query, convoHistory, roleFilter, contentType, resourceType),
+            ask_llm_stream(None, query, convoHistory),
             media_type="text/event-stream",
         )
     except Exception as e:

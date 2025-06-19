@@ -1,10 +1,7 @@
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 import React, { useEffect, useRef, useState } from "react";
-import { EditRole } from "../component/EditRole";
 import { MessageBubble } from "../component/MessageBubble";
-import { RoleSelection } from "../component/RoleSelection";
 import { SearchInput } from "../component/SearchInput";
-import { SuggestionByRole } from "../component/SuggestionByRole";
 import { BASE_URL } from "../constant/backend";
 import "./SearchBar.css";
 
@@ -17,13 +14,10 @@ interface Citation {
 export interface SearchResult {
   title: string;
   link: string;
-  audience: string[];
-  nefac_category: string[];
-  resource_type: string[];
-  chunks: {
-    summary: string;
-    citations: Citation[];
-  }[];
+  type: string;
+  timestamp_seconds?: number;
+  summary?: string;
+  content?: string;
 }
 
 export interface Message {
@@ -34,9 +28,6 @@ export interface Message {
 
 const SearchBar = () => {
   // State Management
-  const [userRole, setUserRole] = useState("none");
-  const [contentType, setContentType] = useState("");
-  const [resourceType, setResourceType] = useState("");
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [conversation, setConversation] = useState<Message[]>([
@@ -70,7 +61,6 @@ const SearchBar = () => {
     }
   }, [conversation]);
 
-
   // Event Handlers
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
@@ -92,13 +82,7 @@ const SearchBar = () => {
           "/ask-llm?query=" +
           encodeURIComponent(searchText) +
           "&convoHistory=" +
-          encodeURIComponent("") +
-          "&roleFilter=" +
-          encodeURIComponent(userRole) +
-          "&contentType=" +
-          encodeURIComponent(contentType) +
-          "&resourceType=" +
-          encodeURIComponent(resourceType),
+          encodeURIComponent(""),
         {
           method: "GET", // Using GET method for RESTful endpoint
           headers: {
@@ -122,26 +106,16 @@ const SearchBar = () => {
               if (!contextOrderStream.current.has(parsedData.order)) {
                 parsedData.context.forEach((result: any) => {
                   const exist = contextResultsStream.current.findIndex(
-                    (r) => r.title === result.title
+                    (r) => r.title === result.title && r.timestamp_seconds === result.timestamp_seconds
                   );
-                  if (exist !== -1) {
-                    contextResultsStream.current[exist].chunks.push({
-                      summary: result.summary,
-                      citations: [],
-                    });
-                  } else {
+                  if (exist === -1) {
                     contextResultsStream.current.push({
                       title: result.title,
                       link: result.link.replace("/waiting_room", ""), // Remove /waiting_room
-                      audience: result.audience,
-                      nefac_category: result.nefac_category,
-                      resource_type: result.resource_type,
-                      chunks: [
-                        {
-                          summary: result.summary,
-                          citations: [],
-                        },
-                      ],
+                      type: result.type || 'unknown',
+                      timestamp_seconds: result.timestamp_seconds,
+                      summary: result.summary,
+                      content: result.content
                     });
                   }
                 });
@@ -175,10 +149,10 @@ const SearchBar = () => {
               last.results = contextResultsStream.current.map((result) => ({
                 title: result.title,
                 link: result.link.replace("/waiting_room", ""), // Remove /waiting_room
-                audience: result.audience,
-                nefac_category: result.nefac_category,
-                resource_type: result.resource_type,
-                chunks: result.chunks,
+                type: result.type,
+                timestamp_seconds: result.timestamp_seconds,
+                summary: result.summary,
+                content: result.content
               }));
               last.content = last.content.replace("Searching...", "");
               return [...prev]; // You can resolve the new state if needed
@@ -215,54 +189,30 @@ const SearchBar = () => {
   // Main Render
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
-      {userRole === "none" ? (
-        <RoleSelection
-          setUserRole={setUserRole}
-          setConversation={setConversation}
-        />
-      ) : (
-        <div>
-          {/* Edit Role and Dropdowns */}
-          <EditRole
-            setUserRole={setUserRole}
-            setResourceType={setResourceType}
-            setContentType={setContentType}
-          />
-          <div
-            className="flex-1 overflow-y-auto p-4"
-            style={{ marginBottom: "80px" }}
-          >
-            <div className="max-w-4xl mx-auto space-y-4">
-              {conversation.map((msg, index) => (
-                <MessageBubble
-                  key={index}
-                  msg={msg}
-                  index={index}
-                  conversation={conversation}
-                  prevLength={prevLength}
-                />
-              ))}
-
-              {/* Initial suggestions */}
-              {conversation.length === 1 && (
-                <SuggestionByRole
-                  userRole={userRole}
-                  setConversation={setConversation}
-                  performSearch={performSearch}
-                />
-              )}
-              <div ref={conversationEndRef} />
-            </div>
-          </div>
-
-          <SearchInput
-            handleSearch={handleSearch}
-            handleInputChange={handleInputChange}
-            inputValue={inputValue}
-            isLoading={isLoading}
-          />
+      <div
+        className="flex-1 overflow-y-auto p-4"
+        style={{ marginBottom: "80px" }}
+      >
+        <div className="max-w-4xl mx-auto space-y-4">
+          {conversation.map((msg, index) => (
+            <MessageBubble
+              key={index}
+              msg={msg}
+              index={index}
+              conversation={conversation}
+              prevLength={prevLength}
+            />
+          ))}
+          <div ref={conversationEndRef} />
         </div>
-      )}
+      </div>
+
+      <SearchInput
+        handleSearch={handleSearch}
+        handleInputChange={handleInputChange}
+        inputValue={inputValue}
+        isLoading={isLoading}
+      />
     </div>
   );
 };
