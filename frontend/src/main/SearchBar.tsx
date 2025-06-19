@@ -2,6 +2,7 @@ import { fetchEventSource } from "@microsoft/fetch-event-source";
 import React, { useEffect, useRef, useState } from "react";
 import { MessageBubble } from "../component/MessageBubble";
 import { SearchInput } from "../component/SearchInput";
+import LoadingStatus from "../component/LoadingStatus";
 import { BASE_URL } from "../constant/backend";
 import "./SearchBar.css";
 
@@ -183,6 +184,7 @@ const SearchBar = () => {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
+      <LoadingStatus />
       <div
         className="flex-1 overflow-y-auto p-4"
         style={{ marginBottom: "80px" }}

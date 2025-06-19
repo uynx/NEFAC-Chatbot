@@ -162,7 +162,7 @@ def generate_response_with_sources(query: str, chat_history: list, chunks: list)
     
     if not chunks:
         return {
-            "answer": "I don't have enough information in the NEFAC database to answer this question.",
+            "answer": "I'm sorry, but NEFAC doesn't have any information about that topic in our current database.",
             "sources": []
         }
     
@@ -198,18 +198,20 @@ def generate_response_with_sources(query: str, chat_history: list, chunks: list)
     response_prompt = ChatPromptTemplate.from_messages([
         ("system", """You are an assistant for the New England First Amendment Coalition (NEFAC).
 
-        Based on the provided context from NEFAC's database, answer the user's question accurately and helpfully.
+        Your job is to answer questions using information from NEFAC's database.
 
-        RULES:
-        1. Use the information provided in the context to answer the question
-        2. If the context contains relevant information, provide a helpful answer based on it
-        3. If the context doesn't contain enough information, say so clearly
-        4. When referencing information, mention the source (e.g., "According to the Data Cleaning 101 video")
-        5. Be conversational and helpful while staying accurate to the context
+        HOW TO RESPOND:
+        1. If you find relevant information in the sources below, use it to answer the question. Reference specific sources (e.g., "According to the Data Cleaning 101 video").
+        
+        2. If sources mention the topic indirectly, you can explain the concept based on how NEFAC discusses it. Start with "Based on NEFAC's materials..." 
+        
+        3. If the topic is unrelated to NEFAC's work (like pizza, sports, etc.), say: "That topic isn't related to NEFAC's focus on First Amendment rights and government transparency. I can help with journalism, public records, FOI requests, and related topics."
+        
+        4. If the topic is relevant but not found, say: "I'm sorry, but NEFAC doesn't have information about [topic] in our current database."
 
-        After your answer, on a new line, write "SOURCES_USED:" followed by the source numbers you referenced in your answer (e.g., "SOURCES_USED: 1, 3, 5"). If you found relevant information in the context, list those sources. If you couldn't find relevant information, write "SOURCES_USED: none".
+        CRITICAL: End every response with a new line containing "SOURCES_USED:" followed by the source numbers you used (e.g., "SOURCES_USED: 1, 3, 5") or "SOURCES_USED: none" if you found no relevant information.
 
-        Context from NEFAC database:
+        Available sources:
         {context}"""),
         MessagesPlaceholder(variable_name="chat_history"),
         ("human", "{question}")
@@ -225,25 +227,35 @@ def generate_response_with_sources(query: str, chat_history: list, chunks: list)
         }
         
         full_response = chain.invoke(input_data)
+        logger.info(f"Raw LLM response: '{full_response}'")
         
         # Parse the response to separate answer and used sources
         if "SOURCES_USED:" in full_response:
             parts = full_response.split("SOURCES_USED:")
             answer = parts[0].strip()
-            sources_used_text = parts[1].strip()
+            sources_used_text = parts[1].strip() if len(parts) > 1 else "none"
         else:
             answer = full_response.strip()
             sources_used_text = "none"
+            logger.warning(f"LLM response missing SOURCES_USED, appending it. Response was: '{full_response}'")
+        
+        # Validate that we have a non-empty answer
+        if not answer or len(answer.strip()) == 0:
+            logger.warning("Generated empty answer, providing fallback response")
+            answer = "I'm sorry, but NEFAC doesn't have any information about that topic in our current database."
+            sources_used_text = "none"
+        
+        logger.info(f"Parsed answer: '{answer}'")
+        logger.info(f"Sources used text: '{sources_used_text}'")
         
         # Determine which sources to include
         relevant_sources = []
         
         # Check if the answer indicates insufficient information
         insufficient_info_phrases = [
-            "I don't have enough information",
+            "I'm sorry, but NEFAC doesn't have",
+            "That topic isn't related to NEFAC",
             "don't have enough information",
-            "insufficient information",
-            "not enough information",
             "cannot answer",
             "can't answer"
         ]
@@ -334,57 +346,67 @@ async def middleware_qa(query: str, convoHistory: str = ""):
                 logger.warning(f"Could not parse convoHistory: {convoHistory}")
                 chat_history = []
         
+        logger.info(f"Starting middleware_qa for query: {query}")
         result = query_nefac_database_new(query, chat_history)
+        logger.info(f"Got result from query_nefac_database_new: {result}")
         
-        vector_queries = generate_vector_queries(query, chat_history)
-        all_chunks = retrieve_chunks_from_queries(vector_queries, k_per_query=5)
-        chunk_map = {}
-        for chunk in all_chunks:
-            title = chunk.metadata.get('title', 'unknown')
-            timestamp = chunk.metadata.get('page', 0)
-            chunk_key = f"{title}:{timestamp}"
-            chunk_map[chunk_key] = {
-                'content': chunk.page_content,
-                'metadata': chunk.metadata
-            }
-        
+        # Build context data for sources
         context_data = []
-        for source in result.get("sources", []):
-            title = source.get('title', 'Unknown')
-            timestamp_seconds = source.get('timestamp_seconds')
+        if result.get("sources"):
+            # Get the chunks again to build context data
+            vector_queries = generate_vector_queries(query, chat_history)
+            all_chunks = retrieve_chunks_from_queries(vector_queries, k_per_query=5)
+            chunk_map = {}
+            for chunk in all_chunks:
+                title = chunk.metadata.get('title', 'unknown')
+                timestamp = chunk.metadata.get('page', 0)
+                chunk_key = f"{title}:{timestamp}"
+                chunk_map[chunk_key] = {
+                    'content': chunk.page_content,
+                    'metadata': chunk.metadata
+                }
             
-            chunk_content = ""
-            chunk_key = f"{title}:{timestamp_seconds}"
-            if chunk_key in chunk_map:
-                chunk_content = chunk_map[chunk_key]['content']
-            else:
-                for key, chunk_data in chunk_map.items():
-                    if key.startswith(f"{title}:"):
-                        chunk_content = chunk_data['content']
-                        break
-            
-            context_data.append({
-                "title": title,
-                "link": source.get("link", ""),
-                "type": source.get("type", "unknown"),
-                "timestamp_seconds": timestamp_seconds,
-                "summary": source.get("summary", ""),
-                "content": chunk_content
-            })
-            
-            logger.info(f"Source added: {title} at {timestamp_seconds}s, link: {source.get('link', '')}")
+            for source in result.get("sources", []):
+                title = source.get('title', 'Unknown')
+                timestamp_seconds = source.get('timestamp_seconds')
+                
+                chunk_content = ""
+                chunk_key = f"{title}:{timestamp_seconds}"
+                if chunk_key in chunk_map:
+                    chunk_content = chunk_map[chunk_key]['content']
+                else:
+                    for key, chunk_data in chunk_map.items():
+                        if key.startswith(f"{title}:"):
+                            chunk_content = chunk_data['content']
+                            break
+                
+                context_data.append({
+                    "title": title,
+                    "link": source.get("link", ""),
+                    "type": source.get("type", "unknown"),
+                    "timestamp_seconds": timestamp_seconds,
+                    "summary": source.get("summary", ""),
+                    "content": chunk_content
+                })
+                
+                logger.info(f"Source added: {title} at {timestamp_seconds}s, link: {source.get('link', '')}")
         
+        # Send context data if we have sources
         if context_data:
             context_chunk = {
                 "context": context_data,
                 "order": 1
             }
+            logger.info(f"Yielding context chunk: {context_chunk}")
             yield f"data: {json.dumps(context_chunk)}\n\n"
         
+        # Always send the message
+        answer = result.get("answer", "No response available.")
         message_chunk = {
-            "message": result.get("answer", "No response available."),
+            "message": answer,
             "order": 2
         }
+        logger.info(f"Yielding message chunk: {message_chunk}")
         yield f"data: {json.dumps(message_chunk)}\n\n"
         
     except Exception as e:
@@ -393,4 +415,5 @@ async def middleware_qa(query: str, convoHistory: str = ""):
             "message": "An error occurred while processing your query.",
             "order": 1
         }
+        logger.info(f"Yielding error chunk: {error_chunk}")
         yield f"data: {json.dumps(error_chunk)}\n\n"
