@@ -44,6 +44,7 @@ venv.bak/
 node_modules/
 coverage/
 build/
+.cursor
 .DS_Store
 .env.local
 .env.development.local
@@ -132,7 +133,4 @@ node_modules/
 # Vite build output
 dist/
 
-# we may need to eventually remove the documents, database, and pkls from the git
-faiss_store/
 
-.cursor
