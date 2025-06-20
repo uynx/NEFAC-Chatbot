@@ -36,9 +36,25 @@ def add_all_documents_to_store(vector_store):
         pickle.dump(title_to_chunks, t2c)
 
     def chunk_documents(docs):
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=512, chunk_overlap=32)
-        chunked_docs = text_splitter.split_documents(docs)
-        return chunked_docs
+        # Only re-chunk non-YouTube documents (PDFs need chunking, YouTube is already time-chunked)
+        youtube_chunks = []
+        other_chunks = []
+        
+        for doc in docs:
+            if doc.metadata.get('type') == 'youtube':
+                youtube_chunks.append(doc)
+            else:
+                other_chunks.append(doc)
+        
+        # Re-chunk PDFs and other documents
+        if other_chunks:
+            text_splitter = RecursiveCharacterTextSplitter(chunk_size=512, chunk_overlap=32)
+            other_chunked = text_splitter.split_documents(other_chunks)
+        else:
+            other_chunked = []
+        
+        # YouTube chunks are already properly sized for time-based retrieval
+        return youtube_chunks + other_chunked
     
     new_chunks = [chunk for doc in new_docs for chunk in title_to_chunks[doc]]
     logger.info(f"Processing {len(new_chunks)} chunks from new documents")

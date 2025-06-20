@@ -88,9 +88,9 @@ def load_all_documents():
         for url in failed_urls:
             waiting_write.write(url + "\n")
             
-    # Save title_to_chunks to make it available for sequential loading
+    # Save title_to_chunks to make it available
     with open('title_to_chunks.pkl', 'wb') as t2c:
         pickle.dump(title_to_chunks, t2c)
-    logger.info("Saved title_to_chunks.pkl for sequential loading")
+    logger.info("Saved title_to_chunks.pkl")
             
     return all_documents, url_to_title, title_to_chunks, new_docs
