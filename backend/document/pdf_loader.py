@@ -11,5 +11,6 @@ def pdfLoader(pdf_path, title_to_chunks):
     for page in pages:
         page.metadata['title'] = doc_title
         page.metadata['type'] = 'pdf'
+        page.metadata['source'] = pdf_path
         title_to_chunks[doc_title] = pages
     return {doc_title}

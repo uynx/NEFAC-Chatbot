@@ -26,8 +26,10 @@ def youtubeLoader(url, title_to_chunks, url_to_title):
             logger.info(f"Video already processed: {title}")
             return set()
         
-        # Set metadata
+        # Set metadata to match what chain.py expects
         doc.metadata['title'] = title
+        doc.metadata['type'] = 'youtube'
+        doc.metadata['source'] = url
         
         # Store in our mappings
         title_to_chunks[title] = docs

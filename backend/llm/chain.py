@@ -188,8 +188,7 @@ def generate_response_with_sources(query: str, chat_history: list, chunks: list)
             "title": title,
             "type": doc_type,
             "link": f"{source_url}&t={timestamp}s" if doc_type == 'youtube' and timestamp else source_url,
-            "timestamp_seconds": timestamp if doc_type == 'youtube' else None,
-            "summary": metadata.get('summary', None)
+            "timestamp_seconds": timestamp if doc_type == 'youtube' else None
         })
     
     context = "\n\n".join(context_parts)
@@ -385,7 +384,6 @@ async def middleware_qa(query: str, convoHistory: str = ""):
                     "link": source.get("link", ""),
                     "type": source.get("type", "unknown"),
                     "timestamp_seconds": timestamp_seconds,
-                    "summary": source.get("summary", ""),
                     "content": chunk_content
                 })
                 
