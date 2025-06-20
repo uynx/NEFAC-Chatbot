@@ -87,7 +87,7 @@ def load_all_documents():
     with open(yt_urls_file, "w") as waiting_write:
         for url in failed_urls:
             waiting_write.write(url + "\n")
-    
+            
     # Save title_to_chunks to make it available for sequential loading
     with open('title_to_chunks.pkl', 'wb') as t2c:
         pickle.dump(title_to_chunks, t2c)

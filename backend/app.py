@@ -4,7 +4,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from llm.main import ask_llm_stream
 from load_env import load_env
-from vector.load import get_loading_status, is_loading
 
 load_env()
 
@@ -31,15 +30,5 @@ async def ask_llm(
             ask_llm_stream(None, query, convoHistory),
             media_type="text/event-stream",
         )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/loading-status")
-async def get_vector_loading_status():
-    """Get the current status of document loading into the vector store"""
-    try:
-        status = get_loading_status()
-        status["is_loading"] = is_loading()
-        return status
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
