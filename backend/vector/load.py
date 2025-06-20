@@ -21,14 +21,24 @@ FAISS_STORE_PATH = "faiss_store"
 def add_all_documents_to_store(vector_store):
     """Add all new documents to the vector store"""
     logger.info("Loading all documents and processing for vector store...")
-    all_documents, url_to_title, title_to_chunks, new_docs = load_all_documents()
-
+    
+    # Load existing doc_names and append new ones
+    if os.path.exists('doc_names.pkl'):
+        with open('doc_names.pkl', 'rb') as f:
+            existing_doc_names = pickle.load(f)
+    else:
+        existing_doc_names = set()
+    
+    # Process new documents
+    url_to_title, title_to_chunks, new_docs = load_all_documents()
     logger.info(f"Found {len(new_docs)} new documents to add to vector store")
 
-    # Keeping track of all document names we have for the future (may not be needed)
-    with open('doc_names.pkl', 'wb') as doc_names:
-        pickle.dump(all_documents, doc_names)
-
+    # Update doc_names
+    all_doc_names = existing_doc_names.union(new_docs)
+    
+    with open('doc_names.pkl', 'wb') as f:
+        pickle.dump(all_doc_names, f)
+    
     with open('url_to_title.pkl', 'wb') as u2t:
         pickle.dump(url_to_title, u2t)
 
@@ -36,7 +46,6 @@ def add_all_documents_to_store(vector_store):
         pickle.dump(title_to_chunks, t2c)
 
     def chunk_documents(docs):
-        # Only re-chunk non-YouTube documents (PDFs need chunking, YouTube is already time-chunked)
         youtube_chunks = []
         other_chunks = []
         
